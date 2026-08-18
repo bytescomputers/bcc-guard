@@ -86,9 +86,20 @@ function getRecipients(recipientField) {
   });
 }
 
+// Register the handler immediately and unconditionally. This is required for
+// classic Outlook on Windows: Microsoft's own documentation confirms that on
+// this platform, code inside Office.onReady() and Office.initialize does NOT
+// run when an event handler is invoked via the JS-only runtime — so wrapping
+// this call in Office.onReady alone left classic desktop Outlook with no
+// handler ever registered, causing the send dialog to hang indefinitely on
+// "taking longer than expected" rather than firing or erroring cleanly.
+// Confirmed as the real cause of a live production hang on 11/08/2026.
+Office.actions.associate("onMessageSendHandler", onMessageSendHandler);
+
 Office.onReady(function () {
-  // Required wrapper — without this, Outlook can invoke the handler before
-  // it's actually associated, causing the send dialog to hang indefinitely
-  // on "taking longer than expected" instead of firing cleanly.
+  // Also register here for the browser-runtime clients (OWA, Mac, new
+  // Outlook on Windows), where this wrapper was originally needed to fix a
+  // similar hang during EPIC's initial testing. Registering the same name
+  // twice is safe — Outlook simply keeps the latest registration.
   Office.actions.associate("onMessageSendHandler", onMessageSendHandler);
 });
